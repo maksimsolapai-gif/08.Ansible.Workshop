@@ -53,6 +53,18 @@
       loop: "{{ virtualhosts }}"
       notify: Restart Nginx
 
+    - name: Run Nginx syntax verification check
+      ansible.builtin.command: nginx -t
+      register: nginx_validation_output  # Сохраняем весь вывод команды в переменную
+      changed_when: false                 # Указываем, что эта команда не меняет состояние системы
+
+    - name: Display Nginx Validation Report
+      ansible.builtin.debug:
+        msg:
+          - "---------------- NGINX VALIDATION REPORT ----------------"
+          - "{{ nginx_validation_output.stderr_lines }}"
+          - "---------------------------------------------------------"
+
     - name: Remove default Nginx site configuration
       ansible.builtin.file:
         path: /etc/nginx/sites-enabled/default
