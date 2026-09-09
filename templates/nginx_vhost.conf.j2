@@ -1,8 +1,8 @@
 server {
     listen 80;
-    server_name {{ item_domain }};
+    server_name {{ item.domain }};
 
-    root /var/www/{{ item_domain }};
+    root /var/www/{{ item.domain }};
     index index.html;
 
     location / {
