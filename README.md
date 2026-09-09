@@ -28,23 +28,24 @@ Execute the following command from your control node to provision the remote tar
 
 ```bash
 ansible-playbook -i inventory.yml playbook.yml
-
-
 PLAY [Homework 1 - Nginx Configuration Management with VirtualHosts] ***********************************************************************************
 
-TASK [Gathering Facts] ****************************************************************************************************************************
-[WARNING]: Host 'remote_target' is using the discovered Python interpreter at '/usr/bin/python3.10', but future
-installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
+TASK [Gathering Facts] *********************************************************************************************************************************
+Wednesday 09 September 2026  09:30:04 +0000 (0:00:00.015)       0:00:00.015 ***
+[WARNING]: Host 'remote_target' is using the discovered Python interpreter at '/usr/bin/python3.10', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
 ok: [remote_target]
 
 TASK [Ensure Nginx is installed] ***********************************************************************************************************************
+Wednesday 09 September 2026  09:30:10 +0000 (0:00:06.005)       0:00:06.021 ***
 ok: [remote_target]
 
 TASK [Create document root directories for virtualhosts] ***********************************************************************************************
+Wednesday 09 September 2026  09:30:15 +0000 (0:00:04.286)       0:00:10.308 ***
 ok: [remote_target] => (item={'domain': 'site1.local'})
 ok: [remote_target] => (item={'domain': 'site2.local'})
 
 TASK [Deploy index.html from Jinja2 template] **********************************************************************************************************
+Wednesday 09 September 2026  09:30:20 +0000 (0:00:05.072)       0:00:15.381 ***
 [WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
 [DEPRECATION WARNING]: INJECT_FACTS_AS_VARS default to `True` is deprecated, top-level facts will not be auto injected after the change. This feature will be removed from ansible-core version 2.24.
 Origin: /home/max/Project/08.Ansible.Workshop/templates/index.html.j2
@@ -55,17 +56,21 @@ ok: [remote_target] => (item={'domain': 'site1.local'})
 ok: [remote_target] => (item={'domain': 'site2.local'})
 
 TASK [Deploy Nginx virtualhost configurations] *********************************************************************************************************
+Wednesday 09 September 2026  09:30:27 +0000 (0:00:07.732)       0:00:23.113 ***
 ok: [remote_target] => (item={'domain': 'site1.local'})
 ok: [remote_target] => (item={'domain': 'site2.local'})
 
 TASK [Enable virtualhost sites via symlink] ************************************************************************************************************
+Wednesday 09 September 2026  09:30:34 +0000 (0:00:06.860)       0:00:29.973 ***
 ok: [remote_target] => (item={'domain': 'site1.local'})
 ok: [remote_target] => (item={'domain': 'site2.local'})
 
 TASK [Run Nginx syntax verification check] *************************************************************************************************************
+Wednesday 09 September 2026  09:30:38 +0000 (0:00:04.201)       0:00:34.175 ***
 ok: [remote_target]
 
 TASK [Display Nginx Validation Report] *****************************************************************************************************************
+Wednesday 09 September 2026  09:30:41 +0000 (0:00:02.404)       0:00:36.579 ***
 ok: [remote_target] => {
     "msg": [
         "---------------- NGINX VALIDATION REPORT ----------------",
@@ -78,13 +83,16 @@ ok: [remote_target] => {
 }
 
 TASK [Remove default Nginx site configuration] *********************************************************************************************************
+Wednesday 09 September 2026  09:30:41 +0000 (0:00:00.035)       0:00:36.615 ***
 ok: [remote_target]
 
 TASK [Verify HTTP availability for each VirtualHost] ***************************************************************************************************
+Wednesday 09 September 2026  09:30:43 +0000 (0:00:02.358)       0:00:38.973 ***
 ok: [remote_target] => (item={'domain': 'site1.local'})
 ok: [remote_target] => (item={'domain': 'site2.local'})
 
 TASK [Display Website Status Report] *******************************************************************************************************************
+Wednesday 09 September 2026  09:30:47 +0000 (0:00:04.206)       0:00:43.180 ***
 ok: [remote_target] => (item=site1.local) => {
     "msg": [
         "================ WEBSITE STATUS REPORT ================",
@@ -106,6 +114,26 @@ ok: [remote_target] => (item=site2.local) => {
 
 PLAY RECAP *********************************************************************************************************************************************
 remote_target              : ok=11   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+
+
+TASKS RECAP ********************************************************************************************************************************************
+Wednesday 09 September 2026  09:30:47 +0000 (0:00:00.047)       0:00:43.227 ***
+===============================================================================
+Deploy index.html from Jinja2 template ---------------------------------------------------------------------------------------------------------- 7.73s
+Deploy Nginx virtualhost configurations --------------------------------------------------------------------------------------------------------- 6.86s
+Gathering Facts --------------------------------------------------------------------------------------------------------------------------------- 6.01s
+Create document root directories for virtualhosts ----------------------------------------------------------------------------------------------- 5.07s
+Ensure Nginx is installed ----------------------------------------------------------------------------------------------------------------------- 4.29s
+Verify HTTP availability for each VirtualHost --------------------------------------------------------------------------------------------------- 4.21s
+Enable virtualhost sites via symlink ------------------------------------------------------------------------------------------------------------ 4.20s
+Run Nginx syntax verification check ------------------------------------------------------------------------------------------------------------- 2.40s
+Remove default Nginx site configuration --------------------------------------------------------------------------------------------------------- 2.36s
+Display Website Status Report ------------------------------------------------------------------------------------------------------------------- 0.05s
+Display Nginx Validation Report ----------------------------------------------------------------------------------------------------------------- 0.04s
+
+PLAYBOOK RECAP *****************************************************************************************************************************************
+Playbook run took 0 days, 0 hours, 0 minutes, 43 seconds
+
 
 ```
 
