@@ -9,7 +9,7 @@
     virtualhosts:
       - domain: "site1.local"
       - domain: "site2.local"
-
+  
   tasks:
     - name: Ensure Nginx is installed
       ansible.builtin.package:
@@ -71,11 +71,6 @@
         state: absent
       notify: Restart Nginx
 
-  handlers:
-    - name: Restart Nginx
-      ansible.builtin.service:
-        name: nginx
-        state: restarted
 
     - name: Verify HTTP availability for each VirtualHost
       ansible.builtin.uri:
@@ -98,3 +93,9 @@
       loop: "{{ website_checks.results }}"
       loop_control:
         label: "{{ item.item.domain }}" # Делает вывод в консоли более компактным
+
+  handlers:
+    - name: Restart Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
