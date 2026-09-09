@@ -77,7 +77,7 @@
         name: nginx
         state: restarted
 
- - name: Verify HTTP availability for each VirtualHost
+    - name: Verify HTTP availability for each VirtualHost
       ansible.builtin.uri:
         url: "http://127.0.0.1"
         headers:
