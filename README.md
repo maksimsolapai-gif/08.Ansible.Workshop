@@ -14,13 +14,16 @@
 └── README.md
 ```
 
-### Key Automation Features
-* **Jinja2 Templates:** Configures separate Nginx server blocks automatically using dynamic parameters (`templates/nginx_vhost.conf.j2`).
-* **Dynamic Fact Gathering:** Uses Ansible’s built-in fact-gathering mechanism to generate unique `index.html` landing pages (`templates/index.html.j2`).
-Each site automatically embeds the remote server's specific system metrics:
-  * **Managed Host Name** (`ansible_hostname`)
-  * **Managed Host FQDN** (`ansible_fqdn`)
-* **Loops and Handlers:** Optimizes infrastructure-as-code patterns by looping configuration blocks and utilizing an automated Nginx service restart handler only when syntax-safe changes are applied.
+### Playbook Overview
+This playbook automates the deployment and configuration management of an **Nginx web server** across remote target environments.
+
+### Key Objectives & Actions:
+* **Package Management:** Installs the Nginx web server from system repositories and ensures system package caches are updated.
+* **Directory Provisioning:** Creates isolated document root directories (`/var/www/...`) with correct permissions for two separate virtual hosts: `site1.local` and `site2.local`.
+* **Dynamic Content Delivery:** Generates customized `index.html` landing pages for each site using Jinja2 templates. Each page dynamically pulls and renders target host metrics: **Host Name** (`ansible_hostname`) and **FQDN** (`ansible_fqdn`).
+* **Safe Configuration Deployment:** Provisions dedicated Nginx server blocks. It embeds an automated syntax validation check (`nginx -t`) to test config safety before overwriting live files, eliminating potential service downtime.
+* **Site Activation:** Enables new configurations via symbolic links, deactivates the default Nginx landing page, and restarts the web service securely.
+* **End-to-End Self-Testing:** Performs automated HTTP verification requests against both newly deployed virtual hosts at the end of the run, printing a clear status uptime report (HTTP 200 OK) directly into the execution console.
 
 
 ### How to Run the Playbook
