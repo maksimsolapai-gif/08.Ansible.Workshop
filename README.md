@@ -1,202 +1,90 @@
-# Homework Assignment: 08. Ansible Workshop
+# 20.Jenkins.Start
+
+---
+
+## Homework Assignment 1: Deploy Jenkins and close the doors
+
+### 1. Answers to Theoretical Questions
+* **Why are there significantly more installed plugins displayed than what was selected manually?**
+  When installing specific plugins (e.g., `Ansible` or `notify-events`), Jenkins automatically downloads their **transitive dependencies**—associated plugins required for the base tool to function correctly (such as Credentials API, SSH Credentials, Structs, API connectors, etc.).
+* **Where does the Jenkins state live, and what exactly should be backed up?**
+  The entire application state is stored inside the `JENKINS_HOME` directory (located along the `/var/jenkins_home` path inside the cluster pod). To create a full, restorable backup, you must save:
+  * All `.xml` files from the root directory (server core configurations and security settings).
+  * The `jobs/` directory (pipeline structures and build history).
+  * The `users/` directory (local user accounts).
+  * The `secrets/` directory (cryptographic keys for internal secrets and passwords).
+* **What is the difference between a Security Realm and an Authorization Strategy?**
+  * **Security Realm:** Handles authentication (**"Who are you?"**). It defines the mechanism used to verify user credentials (e.g., Jenkins' built-in user database, LDAP, Active Directory, or GitHub OAuth).
+  * **Authorization Strategy:** Handles authorization (**"What are you allowed to do?"**). It determines the access rights of an authenticated user to specific Jenkins objects (e.g., Matrix-based security).
+
+### 2. Proof of Completion (Screenshots)
+
+#### Screenshot 1.1: List of installed plugins (Ansible, notify-events)
+
+<img width="975" height="129" alt="image" src="https://github.com/user-attachments/assets/c01ba1c5-a238-4eb8-9764-41dca77a4d0f" />
+
+#### Screenshot 1.2: Read-Only User Interface
+
+<img width="975" height="536" alt="image" src="https://github.com/user-attachments/assets/49465c58-8a15-4fcb-bee3-b9ff8af4ec8c" />
+
+<img width="975" height="685" alt="image" src="https://github.com/user-attachments/assets/261cb12b-a787-4504-8740-ab6fe8f53247" />
 
 
-## Homework Assignment 1: Configuration Management
+---
 
-### Project Directory Structure
+## Homework Assignment 2: A job driven from outside
+
+### 1. Answers to Theoretical Questions
+* **Why does Jenkins ask for a crumb, and why does a request without a cookie get a 403 error?**
+  A **Crumb** is a dynamic token used for **CSRF protection** (Cross-Site Request Forgery). Jenkins strictly binds the generated Crumb to a unique session identifier stored in the **Session Cookie**. If a valid Crumb is provided but the session cookie is missing, Jenkins treats it as a completely new session, fails to find the matching security token within it, and blocks the request with a `403 Forbidden` code.
+* **Why does a webhook beat Poll SCM, and when is polling still the right answer?**
+  * **Webhook Advantage:** Operates on a **Push model** (event-driven). The build triggers instantaneously the moment a commit occurs, without wasting CPU resources on constant, empty checks.
+  * **When Polling is still relevant:** Operates on a **Pull model**. It remains indispensable when the Jenkins server is hidden inside a completely isolated network perimeter (behind a restrictive Firewall/NAT) with no public IP or proxy tunnels available, making it physically impossible for GitHub/GitLab to reach out and deliver a webhook payload.
+
+### 2. Implementation & Integration Steps
+
+#### 2.1: Create a job that checks whether a user exists in `/etc/passwd`. The user name comes in as a build parameter.
+
+img width="975" height="429" alt="image" src="https://github.com/user-attachments/assets/6f6ac844-0cdf-488a-b677-97a351ee797f" />
+
+**Successful Jenkins Build Console Output:**
+```bash
+Started by user admin
+Running as SYSTEM
+Building in workspace /var/jenkins_home/workspace/check-user-profile
+[check-user-profile] $ /bin/bash /tmp/jenkins14317467359155622537.sh
+=== Проверка существования пользователя в системе ===
+УСПЕХ: Пользователь 'root' существует.
+Finished: SUCCESS
 ```
-08.Ansible.Workshop/
-├── inventory.yml
-├── playbook.yml
-├── templates/
-│   ├── index.html.j2
-│   └── nginx_vhost.conf.j2
-└── README.md
+
+#### 2.2: Trigger that job over the API: create a token, get a crumb, start a build with the parameter, and read the result back.
+
 ```
+$ curl -X POST -u ${API_TOKEN} http://jenkins.k8s-7.sa/job/check-user-profile/buildWithParameters?USER_NAME=root
 
-### Playbook Overview
-This playbook automates the deployment and configuration management of an **Nginx web server** across remote target environments.
+```
+<img width="975" height="338" alt="image" src="https://github.com/user-attachments/assets/f6080188-08c7-4e9b-90ef-9b77324888b8" />
 
-### Key Objectives & Actions:
-* **Package Management:** Installs the Nginx web server from system repositories and ensures system package caches are updated.
-* **Directory Provisioning:** Creates isolated document root directories (`/var/www/...`) with correct permissions for two separate virtual hosts: `site1.local` and `site2.local`.
-* **Dynamic Content Delivery:** Generates customized `index.html` landing pages for each site using Jinja2 templates. Each page dynamically pulls and renders target host metrics: **Host Name** (`ansible_hostname`) and **FQDN** (`ansible_fqdn`).
-* **Safe Configuration Deployment:** Provisions dedicated Nginx server blocks. It embeds an automated syntax validation check (`nginx -t`) to test config safety before overwriting live files, eliminating potential service downtime.
-* **Site Activation:** Enables new configurations via symbolic links, deactivates the default Nginx landing page, and restarts the web service securely.
-* **End-to-End Self-Testing:** Performs automated HTTP verification requests against both newly deployed virtual hosts at the end of the run, printing a clear status uptime report (HTTP 200 OK) directly into the execution console.
+#### 2.3: Create a GitHub Action that takes a user name as input and calls your job over the API.
+The pipeline requests a username via the GitHub user interface, constructs the API payload, and sends it directly to your Jenkins server located behind the NAT.
+<img width="975" height="470" alt="image" src="https://github.com/user-attachments/assets/024b8266-c40f-4659-9435-3770cbb3173a" />
+<img width="975" height="484" alt="image" src="https://github.com/user-attachments/assets/8258373a-d51b-4cfe-9f74-dad2e099489a" />
 
-
-### How to Run the Playbook
-Execute the following command from your control node to provision the remote targets defined in your YAML inventory:
+#### 2.4: In a separate job, connect a repository and add a webhook so that builds run only on changes to main.
+Since Jenkins is not directly reachable from the public internet, a **Webhook Proxy URL** (`https://smee.io`) has been configured. Additionally, a proxy forwarding agent was deployed inside the cluster infrastructure via the `web-hook-proxy.yaml` manifest to receive payloads and forward them to Jenkins:
 
 ```bash
-ansible-playbook -i inventory.yml playbook.yml
-PLAY [Homework 1 - Nginx Configuration Management with VirtualHosts] ***********************************************************************************
-
-TASK [Gathering Facts] *********************************************************************************************************************************
-Wednesday 09 September 2026  09:30:04 +0000 (0:00:00.015)       0:00:00.015 ***
-[WARNING]: Host 'remote_target' is using the discovered Python interpreter at '/usr/bin/python3.10', but future installation of another Python interpreter could cause a different interpreter to be discovered. See https://docs.ansible.com/ansible-core/2.20/reference_appendices/interpreter_discovery.html for more information.
-ok: [remote_target]
-
-TASK [Ensure Nginx is installed] ***********************************************************************************************************************
-Wednesday 09 September 2026  09:30:10 +0000 (0:00:06.005)       0:00:06.021 ***
-ok: [remote_target]
-
-TASK [Create document root directories for virtualhosts] ***********************************************************************************************
-Wednesday 09 September 2026  09:30:15 +0000 (0:00:04.286)       0:00:10.308 ***
-ok: [remote_target] => (item={'domain': 'site1.local'})
-ok: [remote_target] => (item={'domain': 'site2.local'})
-
-TASK [Deploy index.html from Jinja2 template] **********************************************************************************************************
-Wednesday 09 September 2026  09:30:20 +0000 (0:00:05.072)       0:00:15.381 ***
-[WARNING]: Deprecation warnings can be disabled by setting `deprecation_warnings=False` in ansible.cfg.
-[DEPRECATION WARNING]: INJECT_FACTS_AS_VARS default to `True` is deprecated, top-level facts will not be auto injected after the change. This feature will be removed from ansible-core version 2.24.
-Origin: /home/max/Project/08.Ansible.Workshop/templates/index.html.j2
-
-Use `ansible_facts["fact_name"]` (no `ansible_` prefix) instead.
-
-ok: [remote_target] => (item={'domain': 'site1.local'})
-ok: [remote_target] => (item={'domain': 'site2.local'})
-
-TASK [Deploy Nginx virtualhost configurations] *********************************************************************************************************
-Wednesday 09 September 2026  09:30:27 +0000 (0:00:07.732)       0:00:23.113 ***
-ok: [remote_target] => (item={'domain': 'site1.local'})
-ok: [remote_target] => (item={'domain': 'site2.local'})
-
-TASK [Enable virtualhost sites via symlink] ************************************************************************************************************
-Wednesday 09 September 2026  09:30:34 +0000 (0:00:06.860)       0:00:29.973 ***
-ok: [remote_target] => (item={'domain': 'site1.local'})
-ok: [remote_target] => (item={'domain': 'site2.local'})
-
-TASK [Run Nginx syntax verification check] *************************************************************************************************************
-Wednesday 09 September 2026  09:30:38 +0000 (0:00:04.201)       0:00:34.175 ***
-ok: [remote_target]
-
-TASK [Display Nginx Validation Report] *****************************************************************************************************************
-Wednesday 09 September 2026  09:30:41 +0000 (0:00:02.404)       0:00:36.579 ***
-ok: [remote_target] => {
-    "msg": [
-        "---------------- NGINX VALIDATION REPORT ----------------",
-        [
-            "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok",
-            "nginx: configuration file /etc/nginx/nginx.conf test is successful"
-        ],
-        "---------------------------------------------------------"
-    ]
-}
-
-TASK [Remove default Nginx site configuration] *********************************************************************************************************
-Wednesday 09 September 2026  09:30:41 +0000 (0:00:00.035)       0:00:36.615 ***
-ok: [remote_target]
-
-TASK [Verify HTTP availability for each VirtualHost] ***************************************************************************************************
-Wednesday 09 September 2026  09:30:43 +0000 (0:00:02.358)       0:00:38.973 ***
-ok: [remote_target] => (item={'domain': 'site1.local'})
-ok: [remote_target] => (item={'domain': 'site2.local'})
-
-TASK [Display Website Status Report] *******************************************************************************************************************
-Wednesday 09 September 2026  09:30:47 +0000 (0:00:04.206)       0:00:43.180 ***
-ok: [remote_target] => (item=site1.local) => {
-    "msg": [
-        "================ WEBSITE STATUS REPORT ================",
-        "URL: http://site1.local",
-        "HTTP Status: 200",
-        "Content Verification: Page contains 'Welcome to VirtualHost: site1.local'",
-        "======================================================="
-    ]
-}
-ok: [remote_target] => (item=site2.local) => {
-    "msg": [
-        "================ WEBSITE STATUS REPORT ================",
-        "URL: http://site2.local",
-        "HTTP Status: 200",
-        "Content Verification: Page contains 'Welcome to VirtualHost: site2.local'",
-        "======================================================="
-    ]
-}
-
-PLAY RECAP *********************************************************************************************************************************************
-remote_target              : ok=11   changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
-
-
-TASKS RECAP ********************************************************************************************************************************************
-Wednesday 09 September 2026  09:30:47 +0000 (0:00:00.047)       0:00:43.227 ***
-===============================================================================
-Deploy index.html from Jinja2 template ---------------------------------------------------------------------------------------------------------- 7.73s
-Deploy Nginx virtualhost configurations --------------------------------------------------------------------------------------------------------- 6.86s
-Gathering Facts --------------------------------------------------------------------------------------------------------------------------------- 6.01s
-Create document root directories for virtualhosts ----------------------------------------------------------------------------------------------- 5.07s
-Ensure Nginx is installed ----------------------------------------------------------------------------------------------------------------------- 4.29s
-Verify HTTP availability for each VirtualHost --------------------------------------------------------------------------------------------------- 4.21s
-Enable virtualhost sites via symlink ------------------------------------------------------------------------------------------------------------ 4.20s
-Run Nginx syntax verification check ------------------------------------------------------------------------------------------------------------- 2.40s
-Remove default Nginx site configuration --------------------------------------------------------------------------------------------------------- 2.36s
-Display Website Status Report ------------------------------------------------------------------------------------------------------------------- 0.05s
-Display Nginx Validation Report ----------------------------------------------------------------------------------------------------------------- 0.04s
-
-PLAYBOOK RECAP *****************************************************************************************************************************************
-Playbook run took 0 days, 0 hours, 0 minutes, 43 seconds
-
-
+Forwarding https://smee.ioVtYIKecpeKaqAOU to http://cluster.local
 ```
 
-
-### Post-deployment local check
-
+**Deploying the Proxy Forwarder to the Cluster:**
 ```bash
-# Verify the first virtual host configuration
-curl -H "Host: site1.local" http://127.0.0.1
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Welcome to site1.local</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
-        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #333; }
-        span { font-weight: bold; color: #0066cc; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Welcome to VirtualHost: site1.local</h1>
-        <p>This page is dynamically generated by Ansible.</p>
-        <ul>
-            <li><strong>Managed Host Name:</strong> <span>sa-7</span></li>
-            <li><strong>Managed Host FQDN:</strong> <span>sa-7.it-academy.local</span></li>
-        </ul>
-    </div>
-</body>
-</html>
-
-
-# Verify the second virtual host configuration
-curl -H "Host: site2.local" http://127.0.0.1
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Welcome to site2.local</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; }
-        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #333; }
-        span { font-weight: bold; color: #0066cc; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Welcome to VirtualHost: site2.local</h1>
-        <p>This page is dynamically generated by Ansible.</p>
-        <ul>
-            <li><strong>Managed Host Name:</strong> <span>sa-7</span></li>
-            <li><strong>Managed Host FQDN:</strong> <span>sa-7.it-academy.local</span></li>
-        </ul>
-    </div>
-</body>
-</html>
-
+kubectl apply -f web-hook-proxy.yaml -n default
 ```
+<img width="975" height="429" alt="image" src="https://github.com/user-attachments/assets/1235733c-b604-4a7c-a446-52a63822c905" />
+
+<img width="975" height="415" alt="image" src="https://github.com/user-attachments/assets/3bcb5171-d646-4b4b-99ca-fb2423eb3217" />
+
+
+<img width="975" height="469" alt="image" src="https://github.com/user-attachments/assets/a527d173-73c9-4c0b-9c5a-2faf8e0861e5" />
