@@ -2,19 +2,36 @@
 
 
 * **Repository URLs:** https://github.com/maksimsolapai-gif/jenkins-docker-k8s-pipeline.git
+
+##  Repository Structure
+```text
+21.Jenkins.Pipelines.Docker.and.Kubernetes
+├── Dockerfile
+├── index.html
+├── Jenkinsfile          # pipeline for Homework Assignment 1
+└── Jenkinsfile.k8s      # pipeline for Homework Assignment 2
+```
+
 ---
 
 ## Homework Assignment 1: From Dockerfile to prod
 
-### 1. Answers to Theoretical Questions
+
+The repository uses a declarative pipeline: it is written using the strict `pipeline { ... }` syntax and is physically located in a **`Jenkinsfile`** within the GitHub repository, with Jenkins triggering it via a webhook.
+
+<img width="975" height="452" alt="image" src="https://github.com/user-attachments/assets/bdde5e22-f179-4227-a85e-c160e15ecf9d" />
+
+* Pipeline successfully halts at the interactive gate during builds triggered on the `main` branch.
+<img width="975" height="349" alt="image" src="https://github.com/user-attachments/assets/9764feaa-93b7-40ad-a6da-681b332bb268" />
+
+<img width="975" height="403" alt="image" src="https://github.com/user-attachments/assets/7d35ed9d-53cd-4882-a288-14ee35f3353c" />
+
+
+###  Answers to Theoretical Questions
 * **What happens if nobody presses Approve, and how did you handle it?**
   * *Answer:* If no one interacts with the manual approval gate, the Jenkins pipeline will hang indefinitely in a paused state. This locks up a build executor on the Jenkins master/node, preventing other builds in the queue from running. To handle this situation safely, a local `timeout(time: 10, unit: 'MINUTES')` was applied directly inside the options block of the `Approve Production Rollout` stage. If an administrator fails to approve the deployment within 10 minutes, the stage aborts automatically with an `ABORTED` status, releasing cluster resources.
 * **Why does cleanup belong in `post` instead of being the last stage?**
   * *Answer:* If the cleanup process (deleting temporary Pre-Prod configurations) is placed inside a regular final stage like `stage('Cleanup')`, any failure in the preceding stages (such as a failed test step or a manual rejection/timeout at the approval gate) will cause Jenkins to immediately halt pipeline execution. Consequently, the pipeline will never reach that final stage, leaving orphaned "garbage" resources running inside the cluster. Placing cleanup inside the `post { always { } }` block acts as a global exception interceptor, guaranteeing execution regardless of whether the pipeline outcome is Success, Failure, or Aborted.
-
-### 2. Proof of Completion (Assignment 1)
-* Pipeline successfully halts at the interactive gate during builds triggered on the `main` branch.
-* Pushes to any branch other than `main` successfully evaluate the `when { expression { ... } }` conditions, skipping deployment stages while executing the core image build logic.
 
 ---
 
@@ -32,6 +49,7 @@
     3. **Pod Retention Configuration:** Temporarily enabling the `Time in minutes to retain slave pods in case of failure` configuration inside the Jenkins Global Cloud Settings. This tells the controller to skip immediate teardown if an error is encountered, keeping the dead pod alive for standard `kubectl logs` and `kubectl describe` diagnostics.
 
 ### 2. Proof of Completion (Assignment 2)
+<img width="975" height="221" alt="image" src="https://github.com/user-attachments/assets/ae1bee2c-1bc5-4340-8ebb-d7e9f9c429cf" />
 
 #### Runtime Container Grid Capture (`kubectl get pods` equivalent from `k9s` during execution):
 ```bash
@@ -41,16 +59,15 @@ M1   builder  ●   alpine:3.18                                              tru
 M2   tester   ●   alpine:3.18                                              true   Running  0
 M3   jnlp     ●   jenkins/inbound-agent:3391.va_37fa_a_305d6d-1-jdk25       true   Running  0
 ```
+<img width="975" height="191" alt="image" src="https://github.com/user-attachments/assets/5c9fe25f-25da-4cfe-8b9f-24e09e2a56d7" />
 
-#### Final Execution Verification (Interactive Gate Working inside Kubernetes Pod):
-The workspace successfully switches execution shells across multiple containers inside the single ephemeral lifecycle pod, ensuring correct hostname alignments.
-```bash
-=== Выполнение линтинга в контейнере TESTER ===
-Проверка имени хоста текущего контейнера (имя динамического пода):
-docker-k8s-pipeline-17-x8r9f-zmpqs-fkkhq
-```
-```bash
-=== Выполнение сборки в контейнере BUILDER ===
-Проверка имени хоста текущего контейнера (то же имя пода):
-docker-k8s-pipeline-17-x8r9f-zmpqs-fkkhq
-```
+
+The screenshot shows the completion of the entire laboratory assignment:
+1.	The pipeline successfully passed through the dynamic 'tester' and 'builder' containers.
+2.	The automated deployment stage to the Pre-Prod environment was executed.
+3.	The pipeline paused at the "Approve Production Rollout" step and displayed a dialog box asking: "Deploy build #17 to Production?"
+<img width="975" height="313" alt="image" src="https://github.com/user-attachments/assets/36a138d9-4947-4650-b06e-4ce40b7f27ef" />
+
+
+<img width="975" height="294" alt="image" src="https://github.com/user-attachments/assets/f147e538-a8d8-4361-a4ef-64a36672fc90" />
+
