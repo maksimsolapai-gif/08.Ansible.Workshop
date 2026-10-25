@@ -1,9 +1,7 @@
 # 21.Jenkins.Pipelines.Docker.and.Kubernetes
 
-This repository contains the practical implementation of cloud-native Jenkins declarative pipelines running inside a dynamic Kubernetes agent pod infrastructure managed via GitOps.
 
-* **Repository URLs:** [https://github.com](https://github.com)
-
+* **Repository URLs:** https://github.com/maksimsolapai-gif/jenkins-docker-k8s-pipeline.git
 ---
 
 ## Homework Assignment 1: From Dockerfile to prod
